@@ -180,7 +180,7 @@ If you want to paste text without keeping its embedded links, use standard brows
   * **ScriptCat**: [https://scriptcat.org/](https://scriptcat.org/)  
 
 * **スクリプトをインストール (Install the script):**  
-  * [Greasy Fork](https://greasyfork.org/ja/scripts/) にアクセスし、「インストール」ボタンを押してください  
+  * [Greasy Fork](https://greasyfork.org/ja/scripts/591452) にアクセスし、「インストール」ボタンを押してください  
     Access and click the "Install" button.  
 
 ---
