@@ -1,6 +1,8 @@
 # 🥞 TOKIMEKI Hyperlink Rich Paste  
 
-[![Version](https://img.shields.io/badge/version-2.7-orange.svg)](https://github.com/neon-aiart)
+<img src="./assets/00022-404872774.png" style="float: right; width: 240px; margin-left: 15px; border-radius: 10px; border: 1px solid #666;" align="right" width="240px" alt="thumbnail">
+
+[![Version](https://img.shields.io/badge/version-2.7-orange.svg)](https://github.com/neon-aiart/tokimeki-hyperlink-rich-paste)
 [![License](https://img.shields.io/badge/license-PolyForm%20Noncommercial%201.0.0-blue.svg)](https://polyformproject.org/licenses/noncommercial/1.0.0/)
 
 🇯🇵  
@@ -10,6 +12,8 @@
 🇺🇸  
 
 A UserScript that preserves hyperlinks (anchor tags `<a>`) when pasting text into the post input area of [TOKIMEKI](https://tokimeki.blue/), preventing them from being converted to plain text.  
+
+⭐ **スター**をポチッとお願いします✨ (Please hit the **Star** button!)  
 
 <!--
 
