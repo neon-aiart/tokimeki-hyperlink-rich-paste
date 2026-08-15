@@ -11,6 +11,8 @@
 
 A UserScript that preserves hyperlinks (anchor tags `<a>`) when pasting text into the post input area of [TOKIMEKI](https://tokimeki.blue/), preventing them from being converted to plain text.  
 
+<!--
+
 ---
 
 ## 🎨 インフォグラフィック (Infographic)  
@@ -22,6 +24,8 @@ A UserScript that preserves hyperlinks (anchor tags `<a>`) when pasting text int
 </summary>
 <img src="https://info-pick.neon-aiillust.workers.dev/tokimeki-hyperlink-rich-paste?details" alt="infographic details" width="100%">
 </details>
+
+-->
 
 <!-- <a href="https://info-pick.neon-aiillust.workers.dev/tokimeki-hyperlink-rich-paste/purge-and-close" target="_blank" rel="noopener noreferrer">🗑️ Camo Purge</a> -->
 
