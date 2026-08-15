@@ -187,9 +187,11 @@ If you want to paste text without keeping its embedded links, use standard brows
 
 ## 📝 更新履歴 (Changelog)  
 
-### v2.8 and later  
+### v2.8 and later (Upcoming Tasks)  
 
-No Tasks...
+* [ ] URLだった場合にノータッチ  
+
+Work in Progress...  
 
 ### v2.7  
 
