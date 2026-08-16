@@ -24,6 +24,7 @@ A UserScript that preserves hyperlinks (anchor tags `<a>`) when pasting text int
 <details><summary>
   🌐 Other Language Version
 </summary>
+  « <a href="./assets/tokimeki-hyperlink-rich-paste-info-jp.png">JP</a> / <a href="./assets/tokimeki-hyperlink-rich-paste-info-en.png">EN</a> / <a href="./assets/tokimeki-hyperlink-rich-paste-info-es.png">ES</a> / <a href="./assets/tokimeki-hyperlink-rich-paste-info-cn.png">CN</a> / <a href="./assets/tokimeki-hyperlink-rich-paste-info-kr.png">KR</a> / <a href="./assets/tokimeki-hyperlink-rich-paste-info-pt.png">PT</a> / <a href="./assets/tokimeki-hyperlink-rich-paste-info-id.png">ID</a> »  
 <img src="https://info-pick.neon-aiillust.workers.dev/tokimeki-hyperlink-rich-paste?details" alt="infographic details" width="100%">
 </details>
 
