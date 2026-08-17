@@ -84,6 +84,8 @@
             isPlainLinkFormat = true;
         }
 
+        if (!pastingHref) return;
+
         if (DEBUG) {
             console.log('[DEBUG] Pasting Href:', pastingHref);
             console.log('[DEBUG] Is Plain Link Format:', isPlainLinkFormat);
