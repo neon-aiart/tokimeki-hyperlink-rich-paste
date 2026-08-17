@@ -1,6 +1,6 @@
 # 🥞 TOKIMEKI Hyperlink Rich Paste  
 
-[![Version](https://img.shields.io/badge/version-2.7-orange.svg)](https://github.com/neon-aiart/tokimeki-hyperlink-rich-paste)
+[![Version](https://img.shields.io/badge/version-2.9-orange.svg)](https://github.com/neon-aiart/tokimeki-hyperlink-rich-paste)
 [![License](https://img.shields.io/badge/license-PolyForm%20Noncommercial%201.0.0-blue.svg)](https://polyformproject.org/licenses/noncommercial/1.0.0/)
 
 <img src="./assets/00022-404872774.png" style="float: right; width: 240px; margin-left: 15px; border-radius: 10px; border: 1px solid #666;" align="right" width="240px" alt="thumbnail">
@@ -184,12 +184,17 @@ If you want to paste text without keeping its embedded links, use standard brows
 
 ## 📝 更新履歴 (Changelog)  
 
-### v2.8 and later (Upcoming Tasks)  
+### v3.0 and later (Upcoming Tasks / Backlog)  
 
-* [ ] 貼り付けるテキストがURLだった場合にノータッチ  
-* [ ] 貼り付け先がURLだった場合はノータッチ  
+No Tasks...  
 
-Work in Progress...  
+### v2.9 (Current Release)  
+
+✅ 貼り付け先がURLだった場合は削除してから貼り付け  
+
+### v2.8 (UnReleased)  
+
+✅ 貼り付けるテキストがURLだった場合にノータッチ  
 
 ### v2.7  
 

@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name           TOKIMEKI Hyperlink Rich Paste
-// @version        2.7
+// @version        2.9
 // @icon           data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🥞</text></svg>
 // @description    Keep hyperlinks active when pasting into TOKIMEKI editor
 // @description:ja TOKIMEKIの入力エリアへのペースト時にハイパーリンク（アンカータグ）を維持します
@@ -34,7 +34,7 @@
 (function() {
     'use strict';
 
-    const SCRIPT_VERSION = '2.7';
+    const SCRIPT_VERSION = '2.9';
     const DEBUG = false;
 
     // 監視observerの参照
@@ -49,24 +49,67 @@
         const target = e.target.closest('[contenteditable="true"]');
         if (!target) return;
 
-        // クリップボードから HTML データを取得
+        // クリップボードから HTML と Plain Text を取得
         const clipboardData = e.clipboardData || window.clipboardData;
         if (!clipboardData) return;
 
         const htmlData = clipboardData.getData('text/html');
-        if (!htmlData) return;
-        // console.log(`受け取ったハイパーリンク: ${htmlData}`);
+        const plainTextData = clipboardData.getData('text/plain') ? clipboardData.getData('text/plain').trim() : '';
 
-        // 一時的に DOM を作成して安全に解析
-        const parser = new DOMParser();
-        const doc = parser.parseFromString(htmlData, 'text/html');
+        if (DEBUG) {
+            console.log('[DEBUG] ClipBoard HTML:', htmlData ? htmlData.slice(0, 100) + '...' : '(null)');
+            console.log('[DEBUG] ClipBoard Plain:', plainTextData);
+        }
 
-        // HTML 内から <a> タグ要素だけをピンポイントで抽出（改行やコメントを除外）
-        const firstLink = doc.querySelector('a');
-        if (!firstLink) return;
+        // 貼り付けようとしている URL と「純粋なURL形式か」を抽出・判定
+        let pastingHref = '';
+        let isPlainLinkFormat = false;
 
-        // デフォルトのペースト処理をキャンセル
+        if (htmlData) {
+            // 一時的に DOM を作成して安全に解析
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(htmlData, 'text/html');
+
+            // HTML 内から <a> タグ要素だけをピンポイントで抽出（改行やコメントを除外）
+            const firstLink = doc.querySelector('a');
+            if (firstLink) {
+                pastingHref = firstLink.getAttribute('href') ? firstLink.getAttribute('href').trim() : '';
+                isPlainLinkFormat = isPlainUrlLink(firstLink); // 貼り付けるテキスト自体がURLか（hrefとtextContentが同じ）
+            }
+        }
+
+        // HTML形式のリンクがない場合、プレーンテキスト自体がURLかチェック
+        if (!pastingHref && isUrlString(plainTextData)) {
+            pastingHref = plainTextData;
+            isPlainLinkFormat = true;
+        }
+
+        if (DEBUG) {
+            console.log('[DEBUG] Pasting Href:', pastingHref);
+            console.log('[DEBUG] Is Plain Link Format:', isPlainLinkFormat);
+        }
+
+        // 選択テキストがURLの場合の消去処理（詐欺URL防止）
+        if (pastingHref) {
+            handleUrlSelectionOverwrite(pastingHref);
+        }
+
+        // デフォルトのペースト処理をキャンセルして独自処理へ！
         e.preventDefault();
+
+        // 挿入用の DOM を用意
+        let doc;
+        if (htmlData) {
+            const parser = new DOMParser();
+            doc = parser.parseFromString(htmlData, 'text/html');
+        } else {
+            // プレーンテキスト（またはHTMLなし）のURLだった場合、スクリプト側で <a> タグを組み立てる！
+            doc = document.implementation.createHTMLDocument('');
+            const a = doc.createElement('a');
+            a.setAttribute('href', pastingHref);
+            a.textContent = pastingHref;
+            doc.body.appendChild(a);
+        }
 
         // 簡易サニタイズ（XSS対策）
         sanitizeNode(doc.body);
@@ -74,21 +117,17 @@
         // 不要な改行ノードのみを削除
         cleanBlankNodes(doc.body);
 
-        // 【TOKIMEKI対策】単品リンクの場合のみダミー文字（半角スペース）を付与
+        // 【TOKIMEKI対策】単体URL/ハイパーリンクの場合にダミー文字（半角スペース）を付与！
         const hasDummy = createSingleLinkDummyIfNeeded(doc.body);
 
         // 出力する文字列(innerHTML)を確認
-        if (DEBUG) {
-            console.log(`挿入直前のHTML(v${SCRIPT_VERSION}):`, doc.body.innerHTML);
-        }
+        if (DEBUG) console.log(`[DEBUG] 挿入直前のHTML(v${SCRIPT_VERSION}):`, doc.body.innerHTML);
 
-        // 余計な改行を含まない <a> タグだけを挿入
+        // キャレット位置に <a> タグを挿入
         insertFragmentAtSelection(doc.body);
 
         // ダミーを挿入した場合、TOKIMEKIの処理後に「カーソル付近の半角スペース」だけを削除
-        if (hasDummy) {
-            removeDummyAtSelectionWithObserver(target);
-        }
+        if (hasDummy) removeDummyAtSelectionWithObserver(target);
     }, true);
 
     // 空白・改行ノードを削除する関数
@@ -98,9 +137,7 @@
 
         children.forEach(child => {
             // テキストノードで、かつ改行やスペースのみの場合は削除
-            if (child.nodeType === Node.TEXT_NODE && !child.nodeValue.trim()) {
-                child.remove();
-            }
+            if (child.nodeType === Node.TEXT_NODE && !child.nodeValue.trim()) child.remove();
         });
     }
 
@@ -176,9 +213,7 @@
             if (targetTextNode && targetTextNode.nodeValue) {
                 if (targetTextNode.nodeValue.startsWith(DUMMY_CHAR)) {
                     targetTextNode.nodeValue = targetTextNode.nodeValue.slice(DUMMY_CHAR.length);
-                    if (targetTextNode.nodeValue === '') {
-                        targetTextNode.remove();
-                    }
+                    if (targetTextNode.nodeValue === '') targetTextNode.remove();
                 }
             }
         };
@@ -202,7 +237,7 @@
         observer.observe(editorTarget, {
             childList: true,
             subtree: true,
-            characterData: true
+            characterData: true,
         });
 
         // 安全装置：2秒後に強制的に監視解除＋クリーンアップ
@@ -273,9 +308,7 @@
         range.insertNode(fragment);
 
         // 5. 空になった（または中身がなくなった）不要な空 <a> タグがあれば掃除
-        if (parentLink && !parentLink.hasChildNodes()) {
-            parentLink.remove();
-        }
+        if (parentLink && !parentLink.hasChildNodes()) parentLink.remove();
 
         // 挿入したコンテンツの末尾にカーソルを移動
         if (lastNode) {
@@ -286,8 +319,84 @@
         }
 
         // スクロール位置を復元してガタつきを防止
-        if (scrollableParent) {
-            scrollableParent.scrollTop = scrollTop;
+        if (scrollableParent) scrollableParent.scrollTop = scrollTop;
+    }
+
+    /**
+     * <a> タグの表示テキストと href が実質的に同じ「ただのURL貼り付け」かどうか判定する関数
+     */
+    function isPlainUrlLink(aTag) {
+        if (!aTag) return false;
+
+        const text = aTag.textContent.trim();
+        const href = aTag.getAttribute('href') ? aTag.getAttribute('href').trim() : '';
+
+        if (!text || !href) return false;
+
+        // 完全一致、または末尾のスラッシュの有無やプロトコルの違いを吸収して比較
+        if (text === href) return true;
+
+        try {
+            const urlFromText = new URL(text.startsWith('http') ? text : `https://${text}`);
+            const urlFromHref = new URL(href, window.location.href);
+            return urlFromText.href === urlFromHref.href;
+        } catch (err) {
+            // URL解析に失敗した場合は通常のテキストリンクとして扱う
+            return false;
+        }
+    }
+
+    /**
+     * 【v2.8】選択中のテキストがURLで、貼り付けようとしているURLと異なる場合、
+     * 選択テキストを消去して詐欺リンク（見た目と遷移先の食い違い）化を防ぐ関数
+     * @param {string} pastingHref 貼り付けようとしているURL文字列
+     */
+    function handleUrlSelectionOverwrite(pastingHref) {
+        if (!pastingHref) return;
+
+        const selection = window.getSelection();
+        if (!selection.rangeCount) return;
+
+        const selectedText = selection.toString().trim();
+        if (!selectedText) return;
+
+        // 選択中のテキストがURL形式かチェック
+        if (isUrlString(selectedText)) {
+            // 選択テキストのURLと、貼り付けるURLが異なる場合は選択範囲を削除する
+            if (!isSameUrl(selectedText, pastingHref)) {
+                if (DEBUG) console.log('[DEBUG] 選択中のURLテキストと貼り付け先URLが異なるため、選択範囲を消去して上書きします');
+                const range = selection.getRangeAt(0);
+                range.deleteContents(); // 選択中の古いURLを消去！
+            }
+        }
+    }
+
+    /**
+     * 文字列がURL形式かどうかを判定する関数
+     */
+    function isUrlString(str) {
+        if (!str) return false;
+        // http(s) から始まるか、簡易的なドメイン形式（例: example.com）にマッチするか
+        if (/^https?:\/\//i.test(str)) return true;
+        try {
+            const url = new URL(str.startsWith('http') ? str : `https://${str}`);
+            return url.hostname.includes('.');
+        } catch (e) {
+            return false;
+        }
+    }
+
+    /**
+     * ２つのURL文字列が実質的に同じかどうかを比較する関数
+     */
+    function isSameUrl(urlStr1, urlStr2) {
+        if (urlStr1 === urlStr2) return true;
+        try {
+            const u1 = new URL(urlStr1.startsWith('http') ? urlStr1 : `https://${urlStr1}`);
+            const u2 = new URL(urlStr2.startsWith('http') ? urlStr2 : `https://${urlStr2}`, window.location.href);
+            return u1.href === u2.href;
+        } catch (e) {
+            return urlStr1.trim() === urlStr2.trim();
         }
     }
 
@@ -298,7 +407,7 @@
         dangerousTags.forEach(el => el.remove());
 
         // イベントハンドラ（onclick等）や javascript: スキームを削除
-        const allElements = [node, ...node.querySelectorAll('*')];
+        const allElements = [node, ...node.querySelectorAll('*'), ];
         allElements.forEach(el => {
             Array.from(el.attributes || []).forEach(attr => {
                 // on から始まるイベント属性を削除
