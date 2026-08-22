@@ -188,11 +188,11 @@ If you want to paste text without keeping its embedded links, use standard brows
 
 No Tasks...  
 
-### v3.1 and later (Upcoming Tasks / Backlog)  
+### v3.1 (Current Release)  
 
 ✅ URL判定関数と関連個所を修正  
 
-### v3.0 (Current Release)  
+### v3.0  
 
 ✅ プレーンの選択テキストにURLを貼り付けで不一致のときに選択テキストでハイパーリンク化  
 ✅ 改行を可能な限り維持する（`div, p, h1, h2, h3, h4, h5, h6`の後に`br`を挿入）  
