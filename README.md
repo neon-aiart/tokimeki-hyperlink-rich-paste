@@ -1,6 +1,6 @@
 # 🥞 TOKIMEKI Hyperlink Rich Paste  
 
-[![Version](https://img.shields.io/badge/version-3.0-orange.svg)](https://github.com/neon-aiart/tokimeki-hyperlink-rich-paste)
+[![Version](https://img.shields.io/badge/version-3.1-orange.svg)](https://github.com/neon-aiart/tokimeki-hyperlink-rich-paste)
 [![License](https://img.shields.io/badge/license-PolyForm%20Noncommercial%201.0.0-blue.svg)](https://polyformproject.org/licenses/noncommercial/1.0.0/)
 
 <img src="./assets/00022-404872774.png" style="float: right; width: 240px; margin-left: 15px; border-radius: 10px; border: 1px solid #666;" align="right" width="240px" alt="thumbnail">
