@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name           TOKIMEKI Hyperlink Rich Paste
-// @version        2.9
+// @version        3.1
 // @icon           data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🥞</text></svg>
 // @description    Keep hyperlinks active when pasting into TOKIMEKI editor
 // @description:ja TOKIMEKIの入力エリアへのペースト時にハイパーリンク（アンカータグ）を維持します
@@ -34,8 +34,9 @@
 (function() {
     'use strict';
 
-    const SCRIPT_VERSION = '2.9';
+    const SCRIPT_VERSION = '3.1';
     const DEBUG = false;
+    if (DEBUG) console.log(`[${getFormattedDateTime()}] 🥞 Hyperlink Rich Paste v${SCRIPT_VERSION}: デバッグモード`);
 
     // 監視observerの参照
     let activeObserver = null;
@@ -43,6 +44,21 @@
 
     // TOKIMEKI対策として付与するダミー文字（半角スペース）
     const DUMMY_CHAR = ' ';
+
+    function getFormattedDateTime() {
+        const now = new Date();
+
+        const pad = (num) => num.toString().padStart(2, '0'); // ２桁にする関数
+
+        const y = now.getFullYear();
+        const m = pad(now.getMonth() + 1);
+        const d = pad(now.getDate());
+        const h = pad(now.getHours());
+        const min = pad(now.getMinutes());
+        const s = pad(now.getSeconds());
+
+        return `${y}/${m}/${d} ${h}:${min}:${s}`;
+    }
 
     document.addEventListener('paste', function(e) {
         // イベントが発生した要素が contenteditable か判定
@@ -56,11 +72,6 @@
         const htmlData = clipboardData.getData('text/html');
         const plainTextData = clipboardData.getData('text/plain') ? clipboardData.getData('text/plain').trim() : '';
 
-        if (DEBUG) {
-            console.log('[DEBUG] ClipBoard HTML:', htmlData ? htmlData.slice(0, 100) + '...' : '(null)');
-            console.log('[DEBUG] ClipBoard Plain:', plainTextData);
-        }
-
         // 貼り付けようとしている URL と「純粋なURL形式か」を抽出・判定
         let pastingHref = '';
         let isPlainLinkFormat = false;
@@ -68,13 +79,18 @@
         if (htmlData) {
             // 一時的に DOM を作成して安全に解析
             const parser = new DOMParser();
-            const doc = parser.parseFromString(htmlData, 'text/html');
+            const tempDoc = parser.parseFromString(htmlData, 'text/html');
 
             // HTML 内から <a> タグ要素だけをピンポイントで抽出（改行やコメントを除外）
-            const firstLink = doc.querySelector('a');
+            const firstLink = tempDoc.querySelector('a');
             if (firstLink) {
                 pastingHref = firstLink.getAttribute('href') ? firstLink.getAttribute('href').trim() : '';
-                isPlainLinkFormat = isPlainUrlLink(firstLink); // 貼り付けるテキスト自体がURLか（hrefとtextContentが同じ）
+
+                // <a> タグ以外にテキストや他の要素が存在しないかチェック！
+                const bodyText = tempDoc.body.textContent.trim();
+                const linkText = firstLink.textContent.trim();
+
+                isPlainLinkFormat = (bodyText === linkText) && isPlainUrlLink(firstLink);
             }
         }
 
@@ -84,16 +100,66 @@
             isPlainLinkFormat = true;
         }
 
-        if (!pastingHref) return;
+        // 貼り付け先（選択範囲・カーソル位置）の状態を解析してログに出す
+        let selection = window.getSelection();
+        let selectedText = selection ? selection.toString().trim() : ''; // 選択中の文字列（テキスト）
+        let targetNodeName = 'NONE';
+        let isInsideAnchor = false;
+        let parentAnchorHref = null;
+
+        if (selection && selection.rangeCount > 0) {
+            const range = selection.getRangeAt(0);
+            const container = range.startContainer;
+
+            // カーソルがあるノードの種別
+            targetNodeName = container.nodeName;
+
+            // カーソルが <a> タグの中にあるか判定
+            const parentLink = container.nodeType === Node.ELEMENT_NODE
+                ? container.closest('a')
+                : (container.parentElement ? container.parentElement.closest('a') : null);
+
+            if (parentLink) {
+                isInsideAnchor = true;
+                parentAnchorHref = parentLink.getAttribute('href');
+            }
+        }
 
         if (DEBUG) {
+            console.groupCollapsed(`[DEBUG] [${getFormattedDateTime()}] 🥞 Hyperlink Rich Paste v${SCRIPT_VERSION}（${plainTextData.length}文字）\n`);
+            // オブジェクトとして出力（ブラウザが自動で折りたたみ化してくれる！）
+            console.log('[DEBUG] ClipBoard & Selection Data:', {
+                selectedText: selectedText || '(なし)',
+                clipBoardHTML: htmlData || '(null)',
+                clipBoardPlain: plainTextData || '(null)',
+            });
+            console.log('[DEBUG] --- 貼り付け先（Target）の状態 ---');
+            console.log('[DEBUG] Target Element:', target.tagName);    // contenteditable要素自体
+            console.log('[DEBUG] Caret Node:', targetNodeName);        // カーソルが直接接しているノード (#text や DIV など)
+            console.log('[DEBUG] Is Inside <a>:', isInsideAnchor);     // <a> タグの中かどうか
+            console.log('[DEBUG] Parent <a> Href:', parentAnchorHref); // <a> タグの中ならそのURL
+            console.log('[DEBUG] --- クリップボードの中身の状態 ---');
             console.log('[DEBUG] Pasting Href:', pastingHref);
             console.log('[DEBUG] Is Plain Link Format:', isPlainLinkFormat);
+            console.log('[DEBUG] ----------------------------------');
+            console.groupEnd();
         }
+
+        if (!pastingHref) {
+            if (DEBUG) console.log('[DEBUG] !pastingHrefのためreturn:', pastingHref);
+            return;
+        };
+
+        // 選択テキストがURLの消去前判定（URLかどうかを保持）
+        const isSelectionUrl = isUrlString(selectedText);
 
         // 選択テキストがURLの場合の消去処理（詐欺URL防止）
         if (pastingHref) {
             handleUrlSelectionOverwrite(pastingHref);
+
+            // 選択情報を最新の状態で再取得して更新しますっ！
+            selection = window.getSelection();
+            selectedText = selection ? selection.toString().trim() : '';
         }
 
         // デフォルトのペースト処理をキャンセルして独自処理へ！
@@ -102,15 +168,77 @@
         // 挿入用の DOM を用意
         let doc;
         if (htmlData) {
+            // HTMLコード内の余分な改行（\r, \n）や余白テキストノードの影響を防ぐため、事前に除去！
+            const cleanHtmlData = htmlData.replace(/[\r\n]+/g, '');
+
             const parser = new DOMParser();
-            doc = parser.parseFromString(htmlData, 'text/html');
+            doc = parser.parseFromString(cleanHtmlData, 'text/html');
+
+            // 【改行（段落化）対策】子要素が１つしかない`div`や`p`がある場合、中身だけに展開する！
+            while (
+                doc.body.children.length === 1 &&
+                ['DIV', 'P',].includes(doc.body.children[0].tagName)
+            ) {
+                const wrapper = doc.body.children[0];
+                // 中身のノード（<span> や <a> など）を outerHTML 等で親（body）に昇格！
+                doc.body.innerHTML = wrapper.innerHTML;
+            }
+
+            // 【偽物リンク対策】<a> の中にない URL 文字列（span等）を探して <a> タグ化する！
+            const walker = doc.createTreeWalker(doc.body, NodeFilter.SHOW_TEXT, null);
+            const nodesToReplace = [];
+
+            let currentNode;
+            while ((currentNode = walker.nextNode())) {
+                // 親要素が <a> タグでなく、中身が URL 文字列の場合
+                if (!currentNode.parentElement.closest('a') && isUrlString(currentNode.nodeValue.trim())) {
+                    nodesToReplace.push(currentNode);
+                }
+            }
+
+            // 対象のテキストノードを <a> タグに置き換え！
+            nodesToReplace.forEach(node => {
+                const rawText = node.nodeValue;
+                const url = rawText.trim();
+                const a = doc.createElement('a');
+                a.setAttribute('href', url);
+                a.textContent = url; // 表示名もURLにする
+
+                // 元のテキストノードを新しい <a> タグに置き換え！
+                node.parentNode.replaceChild(a, node);
+            });
+
+            // ブロック要素（div, p, h1～h6）の直後に <br> を補完して改行を維持！
+            const blocks = doc.body.querySelectorAll('div, p, h1, h2, h3, h4, h5, h6');
+            blocks.forEach(block => {
+                // ブロック要素の末尾に br がなければ追加（最終行以外）
+                if (block.nextSibling && block.nextSibling.nodeName !== 'BR') {
+                    block.after(doc.createElement('br'));
+                }
+            });
         } else {
-            // プレーンテキスト（またはHTMLなし）のURLだった場合、スクリプト側で <a> タグを組み立てる！
+            // プレーンテキスト（またはHTMLなし）のURLの場合
             doc = document.implementation.createHTMLDocument('');
             const a = doc.createElement('a');
             a.setAttribute('href', pastingHref);
             a.textContent = pastingHref;
             doc.body.appendChild(a);
+        }
+
+        // クリップボードのテキストが「純粋な1つのURLだけ」かどうかを厳密に判定！
+        // 改行や余計な文字が入っていない単一のURL文字列の時だけ true になる
+        const isSingleUrlData = isUrlString(plainTextData.trim()) && !/[\r\n]/.test(plainTextData.trim());
+
+        // クリップボードが「純粋な単一URL」の場合のみ、選択テキストで表示名を置換する！
+        if (selectedText && !isSelectionUrl && isSingleUrlData) {
+            const pastedAnchors = doc.body.querySelectorAll('a');
+            pastedAnchors.forEach(a => {
+                // 貼り付けるリンクの表示名がURLのままなら、選択中のプレーンテキストに差し替える
+                if (isUrlString(a.textContent.trim())) {
+                    a.textContent = selectedText;
+                    if (DEBUG) console.log('[DEBUG] ハイパーリンク置換処理を実行しますっ！:', selectedText);
+                }
+            });
         }
 
         // 簡易サニタイズ（XSS対策）
@@ -335,6 +463,9 @@
 
         if (!text || !href) return false;
 
+        // 表示テキスト自体が正当なURL形式でなければ「ただのURL貼り付け」ではない！
+        if (!isUrlString(text)) return false;
+
         // 完全一致、または末尾のスラッシュの有無やプロトコルの違いを吸収して比較
         if (text === href) return true;
 
@@ -349,7 +480,7 @@
     }
 
     /**
-     * 【v2.8】選択中のテキストがURLで、貼り付けようとしているURLと異なる場合、
+     * 選択中のテキストがURLで、貼り付けようとしているURLと異なる場合、
      * 選択テキストを消去して詐欺リンク（見た目と遷移先の食い違い）化を防ぐ関数
      * @param {string} pastingHref 貼り付けようとしているURL文字列
      */
@@ -374,15 +505,24 @@
     }
 
     /**
-     * 文字列がURL形式かどうかを判定する関数
+     * 文字列が正しいURL形式かどうか判定する関数
      */
     function isUrlString(str) {
         if (!str) return false;
-        // http(s) から始まるか、簡易的なドメイン形式（例: example.com）にマッチするか
-        if (/^https?:\/\//i.test(str)) return true;
+        const trimmed = str.trim();
+
+        // 日本語の句読点「。」や「、」が含まれていたら絶対URLじゃない！
+        if (/[。、\s]/.test(trimmed)) return false;
+
+        // http:// または https:// で始まる場合
+        if (/^https?:\/\/[^\s]+$/i.test(trimmed)) return true;
+
+        // ドメイン形式（例: google.com）の判定（日本語ドメイン以外を厳密にする場合）
+        // 末尾がちゃんとしたTLD（.com, .jp等）になっているかチェック！
         try {
-            const url = new URL(str.startsWith('http') ? str : `https://${str}`);
-            return url.hostname.includes('.');
+            const url = new URL(trimmed.startsWith('http') ? trimmed : `https://${trimmed}`);
+            // ドメイン名にドットが含まれ、かつTLD（末尾）が英字2文字以上か
+            return url.hostname.includes('.') && /^[a-z]{2,}$/i.test(url.hostname.split('.').pop());
         } catch (e) {
             return false;
         }

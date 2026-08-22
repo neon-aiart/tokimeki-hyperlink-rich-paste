@@ -1,6 +1,6 @@
 # 🥞 TOKIMEKI Hyperlink Rich Paste  
 
-[![Version](https://img.shields.io/badge/version-2.9-orange.svg)](https://github.com/neon-aiart/tokimeki-hyperlink-rich-paste)
+[![Version](https://img.shields.io/badge/version-3.0-orange.svg)](https://github.com/neon-aiart/tokimeki-hyperlink-rich-paste)
 [![License](https://img.shields.io/badge/license-PolyForm%20Noncommercial%201.0.0-blue.svg)](https://polyformproject.org/licenses/noncommercial/1.0.0/)
 
 <img src="./assets/00022-404872774.png" style="float: right; width: 240px; margin-left: 15px; border-radius: 10px; border: 1px solid #666;" align="right" width="240px" alt="thumbnail">
@@ -184,13 +184,22 @@ If you want to paste text without keeping its embedded links, use standard brows
 
 ## 📝 更新履歴 (Changelog)  
 
-### v3.0 and later (Upcoming Tasks / Backlog)  
-
-プレーンにURLを貼り付けすると
+### v3.2 and later (Upcoming Tasks / Backlog)  
 
 No Tasks...  
 
-### v2.9 (Current Release)  
+### v3.1 and later (Upcoming Tasks / Backlog)  
+
+✅ URL判定関数と関連個所を修正  
+
+### v3.0 (Current Release)  
+
+✅ プレーンの選択テキストにURLを貼り付けで不一致のときに選択テキストでハイパーリンク化  
+✅ 改行を可能な限り維持する（`div, p, h1, h2, h3, h4, h5, h6`の後に`br`を挿入）  
+☑️ 偽物リンク対策を追加: HTMLの`a`タグではないURLを`a`タグ化  
+  &emsp; ☑️ 改行（段落化）対策を追加: `a`タグ化しかURLが単体だった場合の改行を防ぐ  
+
+### v2.9  
 
 ✅ 貼り付け先がURLだった場合は削除してから貼り付け  
 
