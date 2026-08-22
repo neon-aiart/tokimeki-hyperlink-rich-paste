@@ -184,9 +184,13 @@ If you want to paste text without keeping its embedded links, use standard brows
 
 ## 📝 更新履歴 (Changelog)  
 
-### v3.1 and later (Upcoming Tasks / Backlog)  
+### v3.2 and later (Upcoming Tasks / Backlog)  
 
 No Tasks...  
+
+### v3.1 and later (Upcoming Tasks / Backlog)  
+
+✅ URL判定関数と関連個所を修正  
 
 ### v3.0 (Current Release)  
 

@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name           TOKIMEKI Hyperlink Rich Paste
-// @version        3.0
+// @version        3.1
 // @icon           data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🥞</text></svg>
 // @description    Keep hyperlinks active when pasting into TOKIMEKI editor
 // @description:ja TOKIMEKIの入力エリアへのペースト時にハイパーリンク（アンカータグ）を維持します
@@ -34,7 +34,7 @@
 (function() {
     'use strict';
 
-    const SCRIPT_VERSION = '3.0';
+    const SCRIPT_VERSION = '3.1';
     const DEBUG = false;
     if (DEBUG) console.log(`[${getFormattedDateTime()}] 🥞 Hyperlink Rich Paste v${SCRIPT_VERSION}: デバッグモード`);
 
@@ -79,13 +79,18 @@
         if (htmlData) {
             // 一時的に DOM を作成して安全に解析
             const parser = new DOMParser();
-            const doc = parser.parseFromString(htmlData, 'text/html');
+            const tempDoc = parser.parseFromString(htmlData, 'text/html');
 
             // HTML 内から <a> タグ要素だけをピンポイントで抽出（改行やコメントを除外）
-            const firstLink = doc.querySelector('a');
+            const firstLink = tempDoc.querySelector('a');
             if (firstLink) {
                 pastingHref = firstLink.getAttribute('href') ? firstLink.getAttribute('href').trim() : '';
-                isPlainLinkFormat = isPlainUrlLink(firstLink); // 貼り付けるテキスト自体がURLか（hrefとtextContentが同じ）
+
+                // <a> タグ以外にテキストや他の要素が存在しないかチェック！
+                const bodyText = tempDoc.body.textContent.trim();
+                const linkText = firstLink.textContent.trim();
+
+                isPlainLinkFormat = (bodyText === linkText) && isPlainUrlLink(firstLink);
             }
         }
 
@@ -220,13 +225,18 @@
             doc.body.appendChild(a);
         }
 
-        // クリップボードがHTML（ハイパーリンク）の場合も、表示名がURLなら選択テキストで置換
-        if (selectedText && !isSelectionUrl) {
+        // クリップボードのテキストが「純粋な1つのURLだけ」かどうかを厳密に判定！
+        // 改行や余計な文字が入っていない単一のURL文字列の時だけ true になる
+        const isSingleUrlData = isUrlString(plainTextData.trim()) && !/[\r\n]/.test(plainTextData.trim());
+
+        // クリップボードが「純粋な単一URL」の場合のみ、選択テキストで表示名を置換する！
+        if (selectedText && !isSelectionUrl && isSingleUrlData) {
             const pastedAnchors = doc.body.querySelectorAll('a');
             pastedAnchors.forEach(a => {
                 // 貼り付けるリンクの表示名がURLのままなら、選択中のプレーンテキストに差し替える
                 if (isUrlString(a.textContent.trim())) {
                     a.textContent = selectedText;
+                    if (DEBUG) console.log('[DEBUG] ハイパーリンク置換処理を実行しますっ！:', selectedText);
                 }
             });
         }
@@ -453,6 +463,9 @@
 
         if (!text || !href) return false;
 
+        // 表示テキスト自体が正当なURL形式でなければ「ただのURL貼り付け」ではない！
+        if (!isUrlString(text)) return false;
+
         // 完全一致、または末尾のスラッシュの有無やプロトコルの違いを吸収して比較
         if (text === href) return true;
 
@@ -492,15 +505,24 @@
     }
 
     /**
-     * 文字列がURL形式かどうかを判定する関数
+     * 文字列が正しいURL形式かどうか判定する関数
      */
     function isUrlString(str) {
         if (!str) return false;
-        // http(s) から始まるか、簡易的なドメイン形式（例: example.com）にマッチするか
-        if (/^https?:\/\//i.test(str)) return true;
+        const trimmed = str.trim();
+
+        // 日本語の句読点「。」や「、」が含まれていたら絶対URLじゃない！
+        if (/[。、\s]/.test(trimmed)) return false;
+
+        // http:// または https:// で始まる場合
+        if (/^https?:\/\/[^\s]+$/i.test(trimmed)) return true;
+
+        // ドメイン形式（例: google.com）の判定（日本語ドメイン以外を厳密にする場合）
+        // 末尾がちゃんとしたTLD（.com, .jp等）になっているかチェック！
         try {
-            const url = new URL(str.startsWith('http') ? str : `https://${str}`);
-            return url.hostname.includes('.');
+            const url = new URL(trimmed.startsWith('http') ? trimmed : `https://${trimmed}`);
+            // ドメイン名にドットが含まれ、かつTLD（末尾）が英字2文字以上か
+            return url.hostname.includes('.') && /^[a-z]{2,}$/i.test(url.hostname.split('.').pop());
         } catch (e) {
             return false;
         }
